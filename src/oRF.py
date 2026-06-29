@@ -3,8 +3,7 @@ from scipy.stats import mode
 from sklearn.datasets import make_classification
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-
+from scipy.stats import entropy
 
 class Node():
     def __init__(self, 
@@ -24,13 +23,17 @@ class Node():
         self.label = label
 
 class DecisionTreeClassifier():
-    def __init__(self):
+    def __init__(self, max_depth=10):
         self.root = None
+        self.max_depth = max_depth
         
-    def build_tree(self, X, Y):
+    def build_tree(self, X, Y, depth=0):
 
         if len(np.unique(Y)) == 1: #StopCriteria
             return Node(label=Y[0]) #retorna y_hat
+        
+        if depth >= self.max_depth:
+            return  Node(label=self.calculate_leaf_label(Y))
 
         n, m = X.shape
 
@@ -54,12 +57,14 @@ class DecisionTreeClassifier():
         
         Xi_left = np.array(Xi_left) #transformando em arrays numpy pra aceitar o método shape durante a recursão
         Xi_right = np.array(Xi_right)
+        Yi_right = np.array(Yi_right)
+        Yi_left = np.array(Yi_left)
         
         if len(Xi_left) == 0 or len(Xi_right) == 0:
             return Node(label=self.calculate_leaf_label(Y))
 
-        left_subtree = self.build_tree(Xi_left, Yi_left)
-        right_subtree = self.build_tree(Xi_right, Yi_right)
+        left_subtree = self.build_tree(Xi_left, Yi_left, depth+1)
+        right_subtree = self.build_tree(Xi_right, Yi_right, depth+1)
         
         return Node(feature_i_star, th_star, 
                     left_subtree, right_subtree)
@@ -145,22 +150,24 @@ class RF ():
 
     def __init__ (self, k=10, p=0.6, s=0.1):
         self.k = k   # number of trees
-        self.p = p # Subsets of 10% data (bagging)
+        self.p = p # Subsets of 60% data (bagging)
         self.s = s #Subsets of s% features (feature subsampling)
         self.trees = []
         self.features_list = []
 
-    trees = []
-    features_list = []
-
     #Training phase
     def fit(self, X_train, Y_train):
-        for _ in range(k):
+
+        self.trees = []
+        self.features_list = []
+        _, m = X_train.shape
+
+        for _ in range(self.k):
             # bagging
-            idx = np.random.choice(len(X_train), int(p * len(X_train)), replace=True)
+            idx = np.random.choice(len(X_train), int(self.p * len(X_train)), replace=True)
             
             # feature selection
-            feat_idx = np.random.choice(m, int(m*s), replace=False)
+            feat_idx = np.random.choice(m, int(m*self.s), replace=False)
             
             X_sub = X_train[idx][:, feat_idx]
             y_sub = Y_train[idx]
@@ -181,6 +188,7 @@ class RF ():
         preds = np.array(preds)
         final_pred = mode(preds, axis=0, keepdims=False).mode
         return final_pred
+
 
 
 

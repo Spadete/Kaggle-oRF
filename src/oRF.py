@@ -290,33 +290,33 @@ class ObliqueDecisionTreeClassifier():
                 #feature_values = Z[:, feature_i] #salvando todos os valores de uma feature num array
                 
                 #***Implemente*** os valores de limiares
-                thresholds = np.unique(Z)
+            thresholds = np.unique(Z)
                 
-                for th in thresholds:
+            for th in thresholds:
                                           
                         #***Implemente*** o split dos dados
-                        Xi_right = []
-                        Yi_right = []
-                        Xi_left = []
-                        Yi_left = []
-                        for i in range(n):
-                            if Z[i] > th:
-                                Xi_right.append(X[i, :])
-                                Yi_right.append(Y[i])
+                Xi_right = []
+                Yi_right = []
+                Xi_left = []
+                Yi_left = []
+                for i in range(n):
+                    if Z[i] > th:
+                        Xi_right.append(X[i, :])
+                        Yi_right.append(Y[i])
                             
-                            else:
-                                Xi_left.append(X[i, :])
-                                Yi_left.append(Y[i])
+                    else:
+                        Xi_left.append(X[i, :])
+                        Yi_left.append(Y[i])
                                 
-                        Yi_left = np.array(Yi_left)
-                        Yi_right = np.array(Yi_right)
-                        if len(Xi_left)>0 and len(Xi_right)>0:
-                            curr_info_gain = self.information_gain(Y, Yi_left, Yi_right)
+                Yi_left = np.array(Yi_left)
+                Yi_right = np.array(Yi_right)
+                if len(Xi_left)>0 and len(Xi_right)>0:
+                    curr_info_gain = self.information_gain(Y, Yi_left, Yi_right)
 
-                            if curr_info_gain>max_info_gain:
-                                w_star = w
-                                th_star = th
-                                max_info_gain = curr_info_gain
+                    if curr_info_gain>max_info_gain:
+                        w_star = w
+                        th_star = th
+                        max_info_gain = curr_info_gain
                             
             return w_star, mean, std, th_star
     

@@ -189,36 +189,202 @@ class RF ():
         final_pred = mode(preds, axis=0, keepdims=False).mode
         return final_pred
 
+class ObliqueNode():
+    def __init__(self, 
+                 w=None, 
+                 mean=None,
+                 std=None,
+                 th_star=None, 
+                 left=None, 
+                 right=None, 
+                 label=None):
+        
+        # for decision node
+        self.w = w
+        self.mean = mean
+        self.std = std
+        self.th_star = th_star
+        self.left = left
+        self.right = right
+        
+        # y_hat for leaf nodes
+        self.label = label
 
+class ObliqueDecisionTreeClassifier():
+    def __init__(self, max_depth=10):
+        self.root = None
+        self.max_depth = max_depth
+        
+    def build_tree(self, X, Y, depth=0):
 
+        if len(np.unique(Y)) == 1: #StopCriteria
+            return ObliqueNode(label=Y[0]) #retorna y_hat
+        
+        if depth >= self.max_depth:
+            return  ObliqueNode(label=self.calculate_leaf_label(Y))
+
+        n, m = X.shape
+
+        w_star, mean, std, th_star = self.get_best_split(X, Y) 
+
+        if w_star is None:
+            return ObliqueNode(label=self.calculate_leaf_label(Y))
+
+        #***Implemente*** o split dos dados para enviar para os filhos
+        Xi_left = []
+        Yi_left = []
+        Xi_right = []
+        Yi_right = []
+
+        X_norm = (X-mean)/std
+        Z = X_norm @ w_star
+
+        for i in range(n):
+            if Z[i] > th_star:
+                Xi_right.append(X[i, :])
+                Yi_right.append(Y[i]) 
+            else:
+                Xi_left.append(X[i, :])
+                Yi_left.append(Y[i])
+        
+        Xi_left = np.array(Xi_left) #transformando em arrays numpy pra aceitar o método shape durante a recursão
+        Xi_right = np.array(Xi_right)
+        Yi_right = np.array(Yi_right)
+        Yi_left = np.array(Yi_left)
+        
+        if len(Xi_left) == 0 or len(Xi_right) == 0:
+            return ObliqueNode(label=self.calculate_leaf_label(Y))
+
+        left_subtree = self.build_tree(Xi_left, Yi_left, depth+1)
+        right_subtree = self.build_tree(Xi_right, Yi_right, depth+1)
+        
+        return ObliqueNode(w_star, mean, std, th_star, 
+                    left_subtree, right_subtree)
+    
+    def get_best_split(self, X, Y):
+            th_star = -1
+            w_star = None
+            max_info_gain = -float("inf")
+            #sum_var = 0
+            #num_componentes = 0
+            
+            #PCA
+            mean = X.mean(axis=0)
+            std = np.std(X, axis=0)
+            X_norm = (X - mean)/std #normalização Z-score
+            U, S, Vt = np.linalg.svd(X_norm, full_matrices = False)
+            w = Vt[0] #guardando vetor do hiperplano
+            #S = S/np.sum(S)
+
+            #Vendo quantas componentes principais preciso para explicar 95% da variância
+            #while (sum_var < 0.95):
+                #sum_var += S[num_componentes]
+                #num_componentes += 1
+
+            #projetando X no meu espaço latente
+            Z = X_norm @ w
+            
+            n = Z.shape[0]
+
+            #for feature_i in range(m):
+                #feature_values = Z[:, feature_i] #salvando todos os valores de uma feature num array
+                
+                #***Implemente*** os valores de limiares
+                thresholds = np.unique(Z)
+                
+                for th in thresholds:
+                                          
+                        #***Implemente*** o split dos dados
+                        Xi_right = []
+                        Yi_right = []
+                        Xi_left = []
+                        Yi_left = []
+                        for i in range(n):
+                            if Z[i] > th:
+                                Xi_right.append(X[i, :])
+                                Yi_right.append(Y[i])
+                            
+                            else:
+                                Xi_left.append(X[i, :])
+                                Yi_left.append(Y[i])
+                                
+                        Yi_left = np.array(Yi_left)
+                        Yi_right = np.array(Yi_right)
+                        if len(Xi_left)>0 and len(Xi_right)>0:
+                            curr_info_gain = self.information_gain(Y, Yi_left, Yi_right)
+
+                            if curr_info_gain>max_info_gain:
+                                w_star = w
+                                th_star = th
+                                max_info_gain = curr_info_gain
+                            
+            return w_star, mean, std, th_star
+    
+    def entropy_calc(self, y):
+         values, counts = np.unique(y, return_counts=True)
+         p = counts / counts.sum()
+         return entropy(p, base=2)
+
+    def information_gain(self, parent, l_child, r_child):
+           #***Implemente*** a função de ganho de informação 
+        eta = len(l_child)/len(parent)
+        return self.entropy_calc(parent) - (eta*self.entropy_calc(l_child) + (1-eta)*self.entropy_calc(r_child))
+    
+        
+    def calculate_leaf_label(self, Y):
+        values, counts = np.unique(Y, return_counts=True)
+        return values[np.argmax(counts)]
+
+    def fit(self, X, Y):
+        self.root = self.build_tree(X, Y)
+
+    def predict(self, X):
+        predictions = []
+        for x in X:
+            y_hat  = self.make_prediction(x, self.root)
+            predictions.append(y_hat)
+
+        return predictions
+
+    def make_prediction(self, x, tree):
+        
+        if tree.label is not None: #Leaf
+            return tree.label
+        
+        feature_val = x[tree.feature_i_star]
+        if feature_val<=tree.th_star:
+            return self.make_prediction(x, tree.left)
+        else:
+            return self.make_prediction(x, tree.right)
 
 def main():
 
-    #n, m = 10000, 256
-    #n_classes = 4
-    #X, y = make_classification(n_samples=n, n_features=m, n_classes=n_classes, n_informative=m//2)
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=0)
+    # Gera um conjunto de classificação
+    X, y = make_classification(
+        n_samples=100,
+        n_features=10,
+        n_informative=5,
+        random_state=42
+    )
 
-    n_train, n_test = map(int, input().split())
-    X_train = np.zeros((n_train, 2), dtype=float)
-    Y_train = np.zeros((n_train, 1), dtype=int)
-    X_test = np.zeros((n_test, 2), dtype=float)
-    
-    
-    for i in range(n_train):
-        tmp = np.array(list(map(float, input().split())))
-        X_train[i] = tmp[:-1]
-        Y_train[i] = int(tmp[-1])
+    # Divide em treino e teste
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.3,
+        random_state=42
+    )
 
-    for i in range(n_test):
-        X_test[i] = np.array(list(map(float, input().split())))
+    # Treina a Random Forest
+    model = RF(k=3, p=0.5, s=0.5)
+    model.fit(X_train, y_train)
 
-    
-    model = DecisionTreeClassifier()
-    model.fit(X_train, Y_train)
-
+    # Predição
     y_hat = model.predict(X_test)
-    
-    accuracy_score(y_test,y_hat)
 
+    # Avaliação
+    acc = accuracy_score(y_test, y_hat)
+    print(f"Accuracy: {acc:.4f}")
+
+if __name__ == "__main__":
     main()

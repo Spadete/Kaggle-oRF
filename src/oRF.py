@@ -23,17 +23,20 @@ class Node():
         self.label = label
 
 class DecisionTreeClassifier():
-    def __init__(self, max_depth=10):
+    def __init__(self, max_depth=100):
         self.root = None
         self.max_depth = max_depth
         
     def build_tree(self, X, Y, depth=0):
 
         if len(np.unique(Y)) == 1: #StopCriteria
-            return Node(label=Y[0]) #retorna y_hat
+            return  Node(label=Y[0])
         
         if depth >= self.max_depth:
             return  Node(label=self.calculate_leaf_label(Y))
+        
+        if len(Y) < 10:
+            return Node(label=self.calculate_leaf_label(Y))
 
         n, m = X.shape
 
@@ -218,9 +221,12 @@ class ObliqueDecisionTreeClassifier():
     def build_tree(self, X, Y, depth=0):
 
         if len(np.unique(Y)) == 1: #StopCriteria
-            return ObliqueNode(label=Y[0]) #retorna y_hat
+            return  ObliqueNode(label=Y[0])
         
         if depth >= self.max_depth:
+            return  ObliqueNode(label=self.calculate_leaf_label(Y))
+        
+        if len(Y) < 10:
             return  ObliqueNode(label=self.calculate_leaf_label(Y))
 
         n, m = X.shape
@@ -361,7 +367,7 @@ class ObliqueDecisionTreeClassifier():
 
 class oRF ():
 
-    def __init__ (self, k=10, p=0.6, s=0.1):
+    def __init__ (self, k=250, p=0.63, s=0.27):
         self.k = k   # number of trees
         self.p = p # Subsets of 60% data (bagging)
         self.s = s #Subsets of s% features (feature subsampling)
@@ -421,7 +427,7 @@ def main():
     )
 
     # Treina a Random Forest
-    model = oRF(k=3, p=0.5, s=0.5)
+    model = oRF()
     model.fit(X_train, y_train)
 
     # Predição

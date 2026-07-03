@@ -271,6 +271,7 @@ class ObliqueDecisionTreeClassifier():
             #PCA
             mean = X.mean(axis=0)
             std = np.std(X, axis=0)
+            std[std==0]=1 #correção de divisão por 0
             X_norm = (X - mean)/std #normalização Z-score
             U, S, Vt = np.linalg.svd(X_norm, full_matrices = False)
             w = Vt[0] #guardando vetor do hiperplano
@@ -351,12 +352,56 @@ class ObliqueDecisionTreeClassifier():
         if tree.label is not None: #Leaf
             return tree.label
         
-        feature_val = x[tree.feature_i_star]
-        if feature_val<=tree.th_star:
+        x_norm = (x - tree.mean)/tree.std
+        z = x_norm @ tree.w
+        if z <=tree.th_star:
             return self.make_prediction(x, tree.left)
         else:
             return self.make_prediction(x, tree.right)
 
+class oRF ():
+
+    def __init__ (self, k=10, p=0.6, s=0.1):
+        self.k = k   # number of trees
+        self.p = p # Subsets of 60% data (bagging)
+        self.s = s #Subsets of s% features (feature subsampling)
+        self.trees = []
+        self.features_list = []
+
+    #Training phase
+    def fit(self, X_train, Y_train):
+
+        self.trees = []
+        self.features_list = []
+        _, m = X_train.shape
+
+        for _ in range(self.k):
+            # bagging
+            idx = np.random.choice(len(X_train), int(self.p * len(X_train)), replace=True)
+            
+            # feature selection
+            feat_idx = np.random.choice(m, int(m*self.s), replace=False)
+            
+            X_sub = X_train[idx][:, feat_idx]
+            y_sub = Y_train[idx]
+            
+            tree = ObliqueDecisionTreeClassifier()
+            tree.fit(X_sub, y_sub)
+            
+            self.trees.append(tree)
+            self.features_list.append(feat_idx)
+
+    #Testing phase
+    def predict(self, X_test):
+        preds = []
+        for tree, feat_idx in zip(self.trees, self.features_list):
+                y_hat = tree.predict(X_test[:, feat_idx])
+                preds.append(y_hat)
+
+        preds = np.array(preds)
+        final_pred = mode(preds, axis=0, keepdims=False).mode
+        return final_pred
+    
 def main():
 
     # Gera um conjunto de classificação
@@ -376,7 +421,7 @@ def main():
     )
 
     # Treina a Random Forest
-    model = RF(k=3, p=0.5, s=0.5)
+    model = oRF(k=3, p=0.5, s=0.5)
     model.fit(X_train, y_train)
 
     # Predição

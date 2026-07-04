@@ -280,50 +280,41 @@ class ObliqueDecisionTreeClassifier():
             std[std==0]=1 #correção de divisão por 0
             X_norm = (X - mean)/std #normalização Z-score
             U, S, Vt = np.linalg.svd(X_norm, full_matrices = False)
-            w = Vt[0] #guardando vetor do hiperplano
-            #S = S/np.sum(S)
-
-            #Vendo quantas componentes principais preciso para explicar 95% da variância
-            #while (sum_var < 0.95):
-                #sum_var += S[num_componentes]
-                #num_componentes += 1
-
+            #w = Vt[0] #guardando vetor do hiperplano
+           
             #projetando X no meu espaço latente
-            Z = X_norm @ w
-            
-            n = Z.shape[0]
+            for j in range(min(3,Vt.shape[0])): #pegar as 5 Componentes Principais e ver qual faz o melhor corte
+                Z = X_norm @ Vt[j]
+                n = Z.shape[0]
 
-            #for feature_i in range(m):
-                #feature_values = Z[:, feature_i] #salvando todos os valores de uma feature num array
-                
-                #***Implemente*** os valores de limiares
-            thresholds = np.unique(Z)
-                
-            for th in thresholds:
-                                          
-                        #***Implemente*** o split dos dados
-                Xi_right = []
-                Yi_right = []
-                Xi_left = []
-                Yi_left = []
-                for i in range(n):
-                    if Z[i] > th:
-                        Xi_right.append(X[i, :])
-                        Yi_right.append(Y[i])
-                            
-                    else:
-                        Xi_left.append(X[i, :])
-                        Yi_left.append(Y[i])
+                    #***Implemente*** os valores de limiares
+                thresholds = np.unique(Z)
+                    
+                for th in thresholds:
+                                            
+                            #***Implemente*** o split dos dados
+                    Xi_right = []
+                    Yi_right = []
+                    Xi_left = []
+                    Yi_left = []
+                    for i in range(n):
+                        if Z[i] > th:
+                            Xi_right.append(X[i, :])
+                            Yi_right.append(Y[i])
                                 
-                Yi_left = np.array(Yi_left)
-                Yi_right = np.array(Yi_right)
-                if len(Xi_left)>0 and len(Xi_right)>0:
-                    curr_info_gain = self.information_gain(Y, Yi_left, Yi_right)
+                        else:
+                            Xi_left.append(X[i, :])
+                            Yi_left.append(Y[i])
+                                    
+                    Yi_left = np.array(Yi_left)
+                    Yi_right = np.array(Yi_right)
+                    if len(Xi_left)>0 and len(Xi_right)>0:
+                        curr_info_gain = self.information_gain(Y, Yi_left, Yi_right)
 
-                    if curr_info_gain>max_info_gain:
-                        w_star = w
-                        th_star = th
-                        max_info_gain = curr_info_gain
+                        if curr_info_gain>max_info_gain:
+                            w_star = Vt[j]
+                            th_star = th
+                            max_info_gain = curr_info_gain
                             
             return w_star, mean, std, th_star
     
